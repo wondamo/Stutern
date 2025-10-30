@@ -1,38 +1,21 @@
-MCP Postgres Server (Python)
+# MCP Postgres Server (Python)
 
-A Python MCP server that connects to PostgreSQL and exposes safe, read-only tools over stdio or streamable HTTP. Use it from MCP-compatible clients (Claude, ChatGPT) to query a Postgres database.
+A minimal MCP server that connects to PostgreSQL and exposes safe, read‑only tools over stdio or HTTP. Use it from MCP‑compatible clients (e.g., Claude Desktop for stdio, or any client that supports HTTP MCP) to query Postgres.
 
-Project Structure
+## Quick Start
 
-```
-.
-├─ mcp_postgres_server/
-│  ├─ server.py              # MCP server (stdio or HTTP; entrypoint: mcp-postgres)
-│  └─ __init__.py
-├─ sql/
-│  └─ load_fx_flows.sql      # schema + COPY for sample data
-├─ data/
-│  └─ fx_flows.csv           # sample FX flows dataset
-├─ mcp_settings.json         # ready-to-paste Claude Desktop stdio config
-├─ pyproject.toml            # defines console script: mcp-postgres
-└─ README.md
-```
+Choose one path.
 
-Hosted Option (HTTP)
-
+### Option A — Hosted (HTTP)
 - Server URL: https://stutern.onrender.com/mcp
-- No local setup required; the hosted database already contains the `fx_flows` dataset.
-- ChatGPT: Settings > Connectors > Add MCP server (HTTP) > use the URL above.
-- Claude Desktop: Settings > Tools > Add MCP server (HTTP) > use the URL above.
+- In your MCP client, add an HTTP server and use the URL above.
+  - ChatGPT: Settings → Connectors → Add MCP server → HTTP
+  - Claude Desktop: Settings → Tools → Add MCP server → HTTP
 
-Local Option (stdio via Claude Desktop)
+### Option B — Local (stdio via Claude Desktop)
+Only Claude Desktop launches local stdio MCP servers.
 
-Only Claude Desktop supports launching local stdio MCP servers today.
-
-1) Install Docker
-- Install Docker Desktop: https://docs.docker.com/get-started/get-docker/
-
-2) Start Postgres and load sample data (from repo root)
+1) Start Postgres and load sample data (from repo root)
 ```
 # Start Postgres (exposes 5438 locally)
 docker run -d --name postgres-fx \
@@ -47,51 +30,114 @@ docker cp sql/load_fx_flows.sql postgres-fx:/tmp/load_fx_flows.sql
 docker exec -it postgres-fx psql -U app -d stutern -f /tmp/load_fx_flows.sql
 ```
 
-3) Install the package (console script: `mcp-postgres`)
+2) Install the package
 ```
-pip install .
-```
+# Windows
+python -m pip install .
 
-4) Configure Claude Desktop (stdio)
-- Open your `claude_desktop_config.json` and under `mcpServers`, paste the contents of `mcp_settings.json`.
-- Ensure `DATABASE_URL` matches your local instance, e.g. `postgres://app:app@localhost:5438/stutern`.
-
-5) Optional: run locally by hand
-```
-# stdio (Claude will normally launch this for you)
-set TRANSPORT_PROTOCOL=stdio
-set DATABASE_URL=postgres://app:app@localhost:5438/stutern
-mcp-postgres
-
-# or
-python -m mcp_postgres_server.server
+# macOS/Linux
+python3 -m pip install .
 ```
 
-HTTP Self‑Hosting (optional)
+3) Point Claude Desktop to the server (stdio)
+- Open Claude Desktop settings and add a local MCP server.
+- Use the contents of `mcp_settings.json` as a template. It runs: `python -m mcp_postgres_server.server`.
+- Ensure `DATABASE_URL` matches your local DB, e.g. `postgres://app:app@localhost:5438/stutern`.
 
-To run your own HTTP instance (for clients that support HTTP transport):
+Optional: run by hand (stdio)
 ```
-set TRANSPORT_PROTOCOL=streamable-http
-set DATABASE_URL=postgres://app:app@localhost:5438/stutern
-mcp-postgres   # serves on 0.0.0.0:8000
+# Windows (PowerShell)
+$env:TRANSPORT_PROTOCOL = "stdio"
+$env:DATABASE_URL = "postgres://app:app@localhost:5438/stutern"
+py -m mcp_postgres_server.server
+
+# macOS/Linux
+export TRANSPORT_PROTOCOL=stdio
+export DATABASE_URL=postgres://app:app@localhost:5438/stutern
+python3 -m mcp_postgres_server.server
 ```
-Then point your client’s MCP server URL to `http://<host>:8000/mcp`.
 
-Provided Tools
+## HTTP Self‑Hosting (optional)
+Run an HTTP endpoint your client can call.
 
-- `pg_health` – server version, current db/schema, env summary
-- `pg_list_tables(schema='public', include_views=False)` – list tables (and optionally views)
-- `pg_describe_table(table, schema='public')` – describe table columns
-- `pg_query(sql, params=None, row_limit=100)` – single read-only query; appends LIMIT if missing
+```
+# Windows (PowerShell)
+$env:TRANSPORT_PROTOCOL = "streamable-http"
+$env:DATABASE_URL = "postgres://app:app@localhost:5438/stutern"
+py -m mcp_postgres_server.server   # serves on 0.0.0.0:8000
 
-Environment
+# macOS/Linux
+export TRANSPORT_PROTOCOL=streamable-http
+export DATABASE_URL=postgres://app:app@localhost:5438/stutern
+python3 -m mcp_postgres_server.server   # serves on 0.0.0.0:8000
+```
 
-- `DATABASE_URL` – full Postgres DSN, e.g. `postgres://user:pass@host:port/db`
-- `PGSSLMODE` – set to `disable` to turn off SSL verification if needed
-- `TRANSPORT_PROTOCOL` – `stdio` (local) or `streamable-http` (HTTP server)
+Point your client to `http://<host>:8000/mcp`.
 
-Troubleshooting
+## Usage — Tools
 
-- Call `pg_health` to verify connectivity and environment.
-- For SSL hiccups to cloud DBs, try `PGSSLMODE=disable`.
+- `pg_health()`
+  - Connectivity check. Returns server version, current db/schema, and sanitized env summary.
+- `pg_list_tables(schema='public', include_views=False)`
+  - Lists tables (and optionally views) in a schema.
+- `pg_describe_table(table, schema='public')`
+  - Describes columns for a table.
+- `pg_query(sql, params=None, row_limit=100)`
+  - Executes a single read‑only query (SELECT/WITH). Uses $1, $2… positional params; ensures a LIMIT if missing.
+
+## Configuration
+
+- `DATABASE_URL` — Postgres DSN, e.g. `postgres://user:pass@host:port/db`
+- `PGSSLMODE` — set to `disable` to turn off SSL verification if needed
+- `TRANSPORT_PROTOCOL` — `stdio` (local) or `streamable-http` (HTTP server)
+
+`mcp_settings.json` contains a ready‑to‑use Claude Desktop stdio config. Example entry id is `postgres-fx`.
+
+## Use Your Own Postgres (no Docker)
+
+- Load `data/fx_flows.csv` with the provided SQL script.
+- macOS/Linux:
+  ```
+  cp data/fx_flows.csv /tmp/fx_flows.csv
+  psql "postgres://USER:PASS@localhost:5432/stutern" -f sql/load_fx_flows.sql
+  ```
+- Windows:
+  - Edit `sql/load_fx_flows.sql` and replace the `\copy ... FROM '/tmp/fx_flows.csv'` path with your local CSV path, e.g. `C:/Users/you/path/data/fx_flows.csv`.
+  - Then run:
+    ```
+    psql "postgres://USER:PASS@localhost:5432/stutern" -f sql/load_fx_flows.sql
+    ```
+
+After loading, point `DATABASE_URL` at your Postgres.
+
+## How It Works (code overview)
+
+- Entry point: `mcp_postgres_server/server.py`
+- Framework: `mcp.server.fastmcp.FastMCP` defines an MCP app with tools.
+- DB: `asyncpg` with a lazily‑initialized connection pool.
+- Safety: `pg_query` only allows a single `SELECT`/`WITH` statement and auto‑adds `LIMIT` if missing. Comments are stripped to validate the first keyword.
+- Transport: set via `TRANSPORT_PROTOCOL` to `stdio` or `streamable-http` (serves on `0.0.0.0:8000`).
+- Env loading: `python-dotenv` loads `.env` if present.
+
+## Project Structure
+
+```
+.
+├─ mcp_postgres_server/
+│  ├─ server.py              # MCP server (stdio or HTTP)
+│  └─ __init__.py
+├─ sql/
+│  └─ load_fx_flows.sql      # schema + COPY for sample data
+├─ data/
+│  └─ fx_flows.csv           # sample dataset
+├─ mcp_settings.json         # Claude Desktop stdio config template
+├─ pyproject.toml            # console script: mcp-postgres
+└─ README.md
+```
+
+## Troubleshooting
+
+- Run `pg_health` to verify connectivity and environment.
+- For SSL to certain cloud DBs, try `PGSSLMODE=disable`.
+- Windows: if `mcp-postgres` is not on PATH, use the module form `python -m mcp_postgres_server.server` or configure Claude Desktop via `mcp_settings.json`.
 
