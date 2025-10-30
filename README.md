@@ -74,24 +74,6 @@ python3 -m mcp_postgres_server.server   # serves on 0.0.0.0:8000
 
 Point your client to `http://<host>:8000/mcp`.
 
-## Usage — Tools
-
-- `pg_health()`
-  - Connectivity check. Returns server version, current db/schema, and sanitized env summary.
-- `pg_list_tables(schema='public', include_views=False)`
-  - Lists tables (and optionally views) in a schema.
-- `pg_describe_table(table, schema='public')`
-  - Describes columns for a table.
-- `pg_query(sql, params=None, row_limit=100)`
-  - Executes a single read‑only query (SELECT/WITH). Uses $1, $2… positional params; ensures a LIMIT if missing.
-
-## Configuration
-
-- `DATABASE_URL` — Postgres DSN, e.g. `postgres://user:pass@host:port/db`
-- `PGSSLMODE` — set to `disable` to turn off SSL verification if needed
-- `TRANSPORT_PROTOCOL` — `stdio` (local) or `streamable-http` (HTTP server)
-
-`mcp_settings.json` contains a ready‑to‑use Claude Desktop stdio config. Example entry id is `postgres-fx`.
 
 ## Use Your Own Postgres (no Docker)
 
@@ -110,15 +92,6 @@ Point your client to `http://<host>:8000/mcp`.
 
 After loading, point `DATABASE_URL` at your Postgres.
 
-## How It Works (code overview)
-
-- Entry point: `mcp_postgres_server/server.py`
-- Framework: `mcp.server.fastmcp.FastMCP` defines an MCP app with tools.
-- DB: `asyncpg` with a lazily‑initialized connection pool.
-- Safety: `pg_query` only allows a single `SELECT`/`WITH` statement and auto‑adds `LIMIT` if missing. Comments are stripped to validate the first keyword.
-- Transport: set via `TRANSPORT_PROTOCOL` to `stdio` or `streamable-http` (serves on `0.0.0.0:8000`).
-- Env loading: `python-dotenv` loads `.env` if present.
-
 ## Project Structure
 
 ```
@@ -135,9 +108,11 @@ After loading, point `DATABASE_URL` at your Postgres.
 └─ README.md
 ```
 
-## Troubleshooting
+## How It Works (code overview)
 
-- Run `pg_health` to verify connectivity and environment.
-- For SSL to certain cloud DBs, try `PGSSLMODE=disable`.
-- Windows: if `mcp-postgres` is not on PATH, use the module form `python -m mcp_postgres_server.server` or configure Claude Desktop via `mcp_settings.json`.
-
+- Entry point: `mcp_postgres_server/server.py`
+- Framework: `mcp.server.fastmcp.FastMCP` defines an MCP app with tools.
+- DB: `asyncpg` with a lazily‑initialized connection pool.
+- Safety: `pg_query` only allows a single `SELECT`/`WITH` statement and auto‑adds `LIMIT` if missing. Comments are stripped to validate the first keyword.
+- Transport: set via `TRANSPORT_PROTOCOL` to `stdio` or `streamable-http` (serves on `0.0.0.0:8000`).
+- Env loading: `python-dotenv` loads `.env` if present.
