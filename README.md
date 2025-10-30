@@ -1,22 +1,33 @@
 MCP Postgres Server (Python)
 
-A Python MCP server that connects to PostgreSQL and exposes safe, read‑only tools over stdio. Great for enabling MCP‑compatible clients to query a Postgres database.
+A Python MCP server that connects to PostgreSQL and exposes safe, read-only tools over stdio or streamable HTTP. Use it from MCP-compatible clients (Claude, ChatGPT) to query a Postgres database.
 
 Project Structure
 
 ```
-mcp_postgres_server/
-  mcp_postgres_server/
-    server.py                 # stdio MCP server (entrypoint: mcp-postgres)
-  sql/
-    load_fx_flows.sql         # schema + COPY for sample data
-  data/
-    fx_flows.csv              # sample FX flows dataset
-  pyproject.toml              # defines console script: mcp-postgres
-  README.md
+.
+├─ mcp_postgres_server/
+│  ├─ server.py              # MCP server (stdio or HTTP; entrypoint: mcp-postgres)
+│  └─ __init__.py
+├─ sql/
+│  └─ load_fx_flows.sql      # schema + COPY for sample data
+├─ data/
+│  └─ fx_flows.csv           # sample FX flows dataset
+├─ mcp_settings.json         # ready-to-paste Claude Desktop stdio config
+├─ pyproject.toml            # defines console script: mcp-postgres
+└─ README.md
 ```
 
-Setup
+Hosted Option (HTTP)
+
+- Server URL: https://stutern.onrender.com/mcp
+- No local setup required; the hosted database already contains the `fx_flows` dataset.
+- ChatGPT: Settings > Connectors > Add MCP server (HTTP) > use the URL above.
+- Claude Desktop: Settings > Tools > Add MCP server (HTTP) > use the URL above.
+
+Local Option (stdio via Claude Desktop)
+
+Only Claude Desktop supports launching local stdio MCP servers today.
 
 1) Install Docker
 - Install Docker Desktop: https://docs.docker.com/get-started/get-docker/
@@ -29,68 +40,58 @@ docker run -d --name postgres-fx \
   -p 5438:5432 -v pgdata_fx:/var/lib/postgresql/data postgres
 
 # Copy data + SQL into the container
-docker cp mcp_postgres_server/data/fx_flows.csv postgres-fx:/tmp/fx_flows.csv
-docker cp mcp_postgres_server/sql/load_fx_flows.sql postgres-fx:/tmp/load_fx_flows.sql
+docker cp data/fx_flows.csv postgres-fx:/tmp/fx_flows.csv
+docker cp sql/load_fx_flows.sql postgres-fx:/tmp/load_fx_flows.sql
 
 # Create table and load the CSV
 docker exec -it postgres-fx psql -U app -d stutern -f /tmp/load_fx_flows.sql
 ```
 
-3) Install the package (so the console script is available)
+3) Install the package (console script: `mcp-postgres`)
 ```
-cd mcp_postgres_server
 pip install .
 ```
 
-4) Configure your MCP client (Claude or ChatGPT)
-- Use this server configuration and set `DATABASE_URL` to your instance:
-```
-{
-  "postgres-fx": {
-    "command": "mcp-postgres",
-    "env": {
-      "DATABASE_URL": "postgres://app:app@localhost:5438/stutern"
-    }
-  }
-}
-```
-- Alternatively (without relying on the console script), you can target the module:
-```
-{
-  "postgres-fx": {
-    "command": "python",
-    "args": ["-m", "mcp_postgres_server.server"],
-    "env": { "DATABASE_URL": "postgres://app:app@localhost:5438/stutern" }
-  }
-}
-```
-- Claude Desktop: add the above under the `mcpServers` section of your `claude_desktop_config.json`.
-- _ChatGPT (MCP‑enabled builds): Local MCP servers are not supported by ChatGPT._
+4) Configure Claude Desktop (stdio)
+- Open your `claude_desktop_config.json` and under `mcpServers`, paste the contents of `mcp_settings.json`.
+- Ensure `DATABASE_URL` matches your local instance, e.g. `postgres://app:app@localhost:5438/stutern`.
 
-Usage
+5) Optional: run locally by hand
+```
+# stdio (Claude will normally launch this for you)
+set TRANSPORT_PROTOCOL=stdio
+set DATABASE_URL=postgres://app:app@localhost:5438/stutern
+mcp-postgres
 
-- The MCP client launches the server via the config. If you want to run it manually:
-  - Console script: `mcp-postgres`
-  - Python module: `python -m mcp_postgres_server.server`
+# or
+python -m mcp_postgres_server.server
+```
 
-Environment
+HTTP Self‑Hosting (optional)
 
-- `DATABASE_URL`: e.g. `postgres://user:pass@host:5432/dbname`
-- Or use `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
-- `PGSSLMODE`: any value except `disable` enables SSL (verification off for convenience)
+To run your own HTTP instance (for clients that support HTTP transport):
+```
+set TRANSPORT_PROTOCOL=streamable-http
+set DATABASE_URL=postgres://app:app@localhost:5438/stutern
+mcp-postgres   # serves on 0.0.0.0:8000
+```
+Then point your client’s MCP server URL to `http://<host>:8000/mcp`.
 
 Provided Tools
 
-- `pg_health` — server version, current db/schema, env summary
-- `pg_list_tables(schema='public', include_views=False)` — list tables (and optionally views)
-- `pg_describe_table(table, schema='public')` — describe table columns
-- `pg_query(sql, params=None, row_limit=100)` — single read‑only query; appends LIMIT if missing
+- `pg_health` – server version, current db/schema, env summary
+- `pg_list_tables(schema='public', include_views=False)` – list tables (and optionally views)
+- `pg_describe_table(table, schema='public')` – describe table columns
+- `pg_query(sql, params=None, row_limit=100)` – single read-only query; appends LIMIT if missing
 
-Safety Notes
+Environment
 
-- Enforces a single SELECT/WITH statement (after stripping SQL comments)
-- Ensures a row limit if none is present
+- `DATABASE_URL` – full Postgres DSN, e.g. `postgres://user:pass@host:port/db`
+- `PGSSLMODE` – set to `disable` to turn off SSL verification if needed
+- `TRANSPORT_PROTOCOL` – `stdio` (local) or `streamable-http` (HTTP server)
 
 Troubleshooting
 
-- If it won’t connect, call `pg_health` and verify credentials/host. For SSL hiccups, try `PGSSLMODE=disable`.
+- Call `pg_health` to verify connectivity and environment.
+- For SSL hiccups to cloud DBs, try `PGSSLMODE=disable`.
+
