@@ -90,7 +90,7 @@ Point your client to `http://<host>:8000/mcp`.
     psql "postgres://USER:PASSWORD@localhost:5432/DATABASE" -f sql/load_fx_flows.sql
     ```
 
-After loading, point `DATABASE_URL` at your Postgres.
+After loading, point `DATABASE_URL` in `env` and `claude desktop settings` at your Postgres.
 
 ## Project Structure
 
