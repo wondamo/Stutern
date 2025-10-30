@@ -11,8 +11,19 @@ import asyncpg
 
 from mcp.server.fastmcp import FastMCP
 
+load_dotenv()
 
-app = FastMCP("mcp-postgres")
+transport = os.getenv("TRANSPORT_PROTOCOL", "stdio")
+
+if transport == "stdio":
+    # For local deployment
+    app = FastMCP("mcp-postgres")
+elif transport == "streamable-http":
+    # For hosted deployment on render
+    app = FastMCP("mcp-postgres", port=8000, host="0.0.0.0")
+else:
+    raise Exception("Only stdio and streamable-http transport is supported")
+
 
 _pool: Optional[asyncpg.Pool] = None
 _pool_lock = asyncio.Lock()
@@ -258,7 +269,7 @@ async def pg_query(
 
 
 def main():
-    app.run()
+    app.run(transport=transport)
 
 
 if __name__ == "__main__":
