@@ -1,10 +1,12 @@
 {
-  "postgres-fx": {
-    "command": "python",
-    "args": ["-m", "mcp_postgres_server.server"],
-    "env": {
-      "TRANSPORT_PROTOCOL": "stdio",
-      "DATABASE_URL": "postgres://app:app@localhost:5438/stutern"
+  "mcpServers": {
+    "postgres-fx": {
+      "command": "python",
+      "args": ["-m", "mcp_postgres_server.server"],
+      "env": {
+        "TRANSPORT_PROTOCOL": "stdio",
+        "DATABASE_URL": "postgres://app:app@localhost:5432/stutern"
+      }
     }
   }
 }

@@ -63,12 +63,12 @@ Run an HTTP endpoint your client can call.
 ```
 # Windows (PowerShell)
 $env:TRANSPORT_PROTOCOL = "streamable-http"
-$env:DATABASE_URL = "postgres://app:app@localhost:5438/stutern"
+$env:DATABASE_URL = "postgres://app:app@localhost:5432/stutern"
 py -m mcp_postgres_server.server   # serves on 0.0.0.0:8000
 
 # macOS/Linux
 export TRANSPORT_PROTOCOL=streamable-http
-export DATABASE_URL=postgres://app:app@localhost:5438/stutern
+export DATABASE_URL=postgres://app:app@localhost:5432/stutern
 python3 -m mcp_postgres_server.server   # serves on 0.0.0.0:8000
 ```
 
@@ -87,7 +87,7 @@ Point your client to `http://<host>:8000/mcp`.
   - Edit `sql/load_fx_flows.sql` and replace the `\copy ... FROM '/tmp/fx_flows.csv'` path with your local CSV path, e.g. `C:/Users/you/path/data/fx_flows.csv`.
   - Then run:
     ```
-    psql "postgres://USER:PASS@localhost:5432/stutern" -f sql/load_fx_flows.sql
+    psql "postgres://USER:PASSWORD@localhost:5432/DATABASE" -f sql/load_fx_flows.sql
     ```
 
 After loading, point `DATABASE_URL` at your Postgres.

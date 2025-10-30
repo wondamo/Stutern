@@ -13,6 +13,7 @@ from mcp.server.fastmcp import FastMCP
 
 load_dotenv()
 
+# Specify transport protocol: stdio for local, streamable-http for hosted
 transport = os.getenv("TRANSPORT_PROTOCOL", "stdio")
 
 if transport == "stdio":
